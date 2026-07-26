@@ -44,6 +44,10 @@ PRIVACY_STATUS = "public"
 TARGET_DURATION_SECONDS = (30, 45)
 TOPIC_SEED = os.environ.get("TOPIC_SEED", "")
 
-# --- Notifications ---
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
-WEBHOOK_FORMAT = os.environ.get("WEBHOOK_FORMAT", "slack")
+# --- Notifications (email via SMTP) ---
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+NOTIFY_EMAIL_FROM = os.environ.get("NOTIFY_EMAIL_FROM", "") or SMTP_USERNAME
+NOTIFY_EMAIL_TO = os.environ.get("NOTIFY_EMAIL_TO", "")

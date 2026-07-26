@@ -19,8 +19,8 @@ Once a day, a scheduled job:
 3. **Publishes it** — uploads to YouTube via the Data API v3 using OAuth2 refresh-token
    auth (no interactive login after the initial one-time setup), with metadata and
    compliance flags (like "Made for Kids") set explicitly rather than left to defaults.
-4. **Logs and reports** — appends the result to a run log and pings a webhook
-   (Slack/Discord) with the outcome, so failures are visible without checking in.
+4. **Logs and reports** — appends the result to a run log and emails me the outcome,
+   so failures are visible without checking in.
 
 ```
 Scheduled trigger (GitHub Actions, daily)
@@ -35,7 +35,7 @@ Scheduled trigger (GitHub Actions, daily)
 3. Upload                ──  YouTube Data API v3  ──▶  publish as a Short
         │
         ▼
-4. Logging & alerting     ──  CSV log + webhook notification
+4. Logging & alerting     ──  CSV log + email notification
 ```
 
 Everything after the trigger fires runs unattended; I only step in if a step fails.
@@ -47,7 +47,7 @@ Everything after the trigger fires runs unattended; I only step in if a step fai
 - **HeyGen API** — AI avatar video rendering
 - **YouTube Data API v3** — OAuth2 (refresh-token flow), video upload
 - **GitHub Actions** — cron-based scheduling, no server to maintain
-- **CSV logging + webhooks** — lightweight observability without a database
+- **CSV logging + SMTP email** — lightweight observability without a database
 
 ## Project layout
 
@@ -57,7 +57,7 @@ script_gen.py                 Claude → {script, title, description, tags}, str
 video_gen.py                  HeyGen submit → poll → download, retries once on failure
 youtube_upload.py             OAuth refresh-token auth → videos.insert
 auth/get_refresh_token.py     one-time local consent flow to mint the refresh token
-webhook.py                    Slack/Discord/generic run notifications
+notify.py                     SMTP email run notifications
 main.py                       runs the pipeline end to end, logs, exits non-zero on failure
 .github/workflows/            daily scheduled run + manual trigger for testing
 state/log.csv                 history of every run (date, title, video id, status)
@@ -72,8 +72,8 @@ state/log.csv                 history of every run (date, title, video id, statu
   flag per video; rather than leaving that decision implicit, it's a config constant
   applied consistently to every upload.
 - **Fail loudly, not silently** — every stage is wrapped so a failure is logged with
-  context and pushed to a webhook, and the process exits non-zero so CI reflects the
-  real state of the run.
+  context and emailed out, and the process exits non-zero so CI reflects the real
+  state of the run.
 - **No server required** — the whole thing runs on GitHub Actions' free scheduled
   workflows, which keeps the project self-contained and easy for anyone to fork and run
   with their own keys.
@@ -92,7 +92,7 @@ You'll need your own keys for:
 - **HeyGen** (an API key plus an avatar/voice ID configured once in their dashboard)
 - **YouTube Data API v3** (a Google Cloud project with the API enabled and an OAuth
   "Desktop app" client)
-- Optionally, a **Slack or Discord webhook URL** for run notifications
+- Optionally, an **SMTP account** (e.g. a Gmail app password) for run-result emails
 
 ### One-time YouTube authorization
 
