@@ -24,6 +24,8 @@ CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")
 HEYGEN_API_KEY = os.environ.get("HEYGEN_API_KEY", "")
 HEYGEN_AVATAR_ID = os.environ.get("HEYGEN_AVATAR_ID", "")
 HEYGEN_VOICE_ID = os.environ.get("HEYGEN_VOICE_ID", "")
+# avatar_iv | avatar_v | avatar_iii — must match what your avatar/plan supports
+HEYGEN_ENGINE = os.environ.get("HEYGEN_ENGINE", "avatar_iv")
 HEYGEN_POLL_INTERVAL_SECONDS = 20
 HEYGEN_POLL_TIMEOUT_SECONDS = 20 * 60
 

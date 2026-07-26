@@ -1,7 +1,9 @@
 """Submit a script to HeyGen, poll until done, download the resulting mp4.
 
-Verify endpoint paths/fields against HeyGen's current docs (app.heygen.com/settings ->
-API) before relying on this in production; their API surface has changed shape before.
+Uses HeyGen's v3 API (POST /v3/videos, GET /v3/videos/{id}) — the older v2 endpoint
+this used to target is deprecated and scheduled for removal 2026-10-31. Verify against
+developers.heygen.com/reference/create-video before relying on this in production;
+their API surface has changed shape before.
 """
 import time
 from pathlib import Path
@@ -11,7 +13,6 @@ import requests
 import config
 
 _BASE_URL = "https://api.heygen.com"
-_PORTRAIT_DIMENSIONS = {"width": 720, "height": 1280}  # 9:16 for Shorts
 
 
 class VideoGenError(RuntimeError):
@@ -19,33 +20,31 @@ class VideoGenError(RuntimeError):
 
 
 def _headers() -> dict:
-    return {"X-Api-Key": config.HEYGEN_API_KEY, "Content-Type": "application/json"}
+    return {"x-api-key": config.HEYGEN_API_KEY, "Content-Type": "application/json"}
+
+
+def _unwrap(payload: dict) -> dict:
+    """v3 responses observed to wrap the real body in {"data": ...}; be defensive
+    in case a given response comes back unwrapped."""
+    return payload.get("data", payload) if isinstance(payload, dict) else payload
 
 
 def submit_job(script_text: str) -> str:
     """Submits a generation job, returns the HeyGen video_id."""
     payload = {
-        "video_inputs": [
-            {
-                "character": {
-                    "type": "avatar",
-                    "avatar_id": config.HEYGEN_AVATAR_ID,
-                    "avatar_style": "normal",
-                },
-                "voice": {
-                    "type": "text",
-                    "input_text": script_text,
-                    "voice_id": config.HEYGEN_VOICE_ID,
-                },
-            }
-        ],
-        "dimension": _PORTRAIT_DIMENSIONS,
-        "test": False,
+        "type": "avatar",
+        "avatar_id": config.HEYGEN_AVATAR_ID,
+        "script": script_text,
+        "voice_id": config.HEYGEN_VOICE_ID,
+        "resolution": "720p",
+        "aspect_ratio": "9:16",  # portrait, for Shorts
+        "output_format": "mp4",
+        "engine": {"type": config.HEYGEN_ENGINE},
     }
-    resp = requests.post(f"{_BASE_URL}/v2/video/generate", json=payload, headers=_headers(), timeout=30)
+    resp = requests.post(f"{_BASE_URL}/v3/videos", json=payload, headers=_headers(), timeout=30)
     resp.raise_for_status()
-    data = resp.json()
-    video_id = data.get("data", {}).get("video_id")
+    data = _unwrap(resp.json())
+    video_id = data.get("video_id")
     if not video_id:
         raise VideoGenError(f"HeyGen submit response missing video_id: {data}")
     return video_id
@@ -55,14 +54,9 @@ def poll_until_done(video_id: str) -> str:
     """Polls status until completed, returns the downloadable video_url. Raises on failure/timeout."""
     deadline = time.monotonic() + config.HEYGEN_POLL_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
-        resp = requests.get(
-            f"{_BASE_URL}/v1/video_status.get",
-            params={"video_id": video_id},
-            headers=_headers(),
-            timeout=30,
-        )
+        resp = requests.get(f"{_BASE_URL}/v3/videos/{video_id}", headers=_headers(), timeout=30)
         resp.raise_for_status()
-        data = resp.json().get("data", {})
+        data = _unwrap(resp.json())
         status = data.get("status")
 
         if status == "completed":
