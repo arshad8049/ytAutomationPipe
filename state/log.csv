@@ -1,1 +1,5 @@
 date,title,video_id,url,status,detail
+2026-07-26,,,,failed,script_gen: script_gen result 'tags' must be a non-empty list
+2026-07-26,Bananas Are Radioactive?! 🍌 #Shorts,,,failed,video_gen: video_gen failed after retry: 402 Client Error: PAYMENT REQUIRED for url: https://api.heygen.com/v2/video/generate
+2026-07-26,Bananas Are Radioactive?! 🍌☢️ #Shorts,,,failed,video_gen: video_gen failed after retry: 400 Client Error: BAD REQUEST for url: https://api.heygen.com/v2/video/generate
+2026-07-26,"AI Doesn't Actually ""See"" Pictures?! 🤯 #Shorts",jOGfAwL4vSM,https://www.youtube.com/shorts/jOGfAwL4vSM,success,

@@ -83,16 +83,26 @@ def download(video_url: str, dest_path: Path) -> Path:
 
 
 def generate_video(script_text: str, dest_path: Path) -> Path:
-    """Submit + poll + download, with a single retry if the first attempt fails."""
+    """Submits exactly one HeyGen job (billed on submission), then retries polling/
+    download against that SAME job on transient network errors.
+
+    Deliberately does not resubmit a fresh job on failure: HeyGen bills per render
+    regardless of whether our poll/download step succeeds afterward, so retrying by
+    resubmitting would silently double-charge for a render that may have already
+    completed. A hard "failed" status or a timeout from poll_until_done is raised
+    immediately rather than retried, since resubmitting wouldn't fix whatever made
+    the render itself fail and would just risk paying twice.
+    """
+    video_id = submit_job(script_text)
+
     last_error: Exception | None = None
     for attempt in range(2):
         try:
-            video_id = submit_job(script_text)
             video_url = poll_until_done(video_id)
             return download(video_url, dest_path)
-        except (VideoGenError, requests.RequestException) as exc:
+        except requests.RequestException as exc:
             last_error = exc
             if attempt == 0:
                 time.sleep(5)
                 continue
-    raise VideoGenError(f"video_gen failed after retry: {last_error}") from last_error
+    raise VideoGenError(f"video_gen failed after retry (video_id={video_id}): {last_error}") from last_error

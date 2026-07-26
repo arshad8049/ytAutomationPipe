@@ -24,7 +24,11 @@ CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")
 HEYGEN_API_KEY = os.environ.get("HEYGEN_API_KEY", "")
 HEYGEN_AVATAR_ID = os.environ.get("HEYGEN_AVATAR_ID", "")
 HEYGEN_VOICE_ID = os.environ.get("HEYGEN_VOICE_ID", "")
-# avatar_iv | avatar_v | avatar_iii — must match what your avatar/plan supports
+# avatar_iv | avatar_v | avatar_iii — must match what your avatar/plan supports.
+# Cost varies a lot by engine (roughly Avatar III << Avatar IV < Avatar V per HeyGen's
+# published per-second API rates) — avatar_iii is worth testing for a cheaper render
+# IF your specific avatar was built to support it; confirm in the HeyGen dashboard
+# before switching, since a wrong engine for a given avatar fails the request outright.
 HEYGEN_ENGINE = os.environ.get("HEYGEN_ENGINE", "avatar_iv")
 HEYGEN_POLL_INTERVAL_SECONDS = 20
 HEYGEN_POLL_TIMEOUT_SECONDS = 20 * 60
@@ -43,7 +47,9 @@ MADE_FOR_KIDS = False
 PRIVACY_STATUS = "public"
 
 # --- Script constraints ---
-TARGET_DURATION_SECONDS = (30, 45)
+# Shorter scripts cost less to render (HeyGen bills per second) and score better on
+# watch-through rate, which is what YouTube's Shorts algorithm actually optimizes for.
+TARGET_DURATION_SECONDS = (20, 32)
 TOPIC_SEED = os.environ.get("TOPIC_SEED", "")
 
 # --- Notifications (email via SMTP) ---

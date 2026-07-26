@@ -3,7 +3,16 @@ name: Daily Zeno Short
 on:
   schedule:
     - cron: "0 14 * * *" # 14:00 UTC daily
-  workflow_dispatch: {} # allows manual "Run workflow" for testing
+  workflow_dispatch: # allows manual "Run workflow" for testing, or a one-off manual-injection run
+    inputs:
+      topic:
+        description: "Override today's topic (leave blank for the normal auto-rotation)"
+        required: false
+        default: ""
+      cta:
+        description: "Point the script's closing line at this, e.g. a specific main video"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -42,7 +51,9 @@ jobs:
           NOTIFY_EMAIL_FROM: ${{ secrets.NOTIFY_EMAIL_FROM }}
           NOTIFY_EMAIL_TO: ${{ secrets.NOTIFY_EMAIL_TO }}
           TOPIC_SEED: ${{ secrets.TOPIC_SEED }}
-        run: python main.py
+          MANUAL_TOPIC: ${{ github.event.inputs.topic }}
+          MANUAL_CTA: ${{ github.event.inputs.cta }}
+        run: python main.py --topic "$MANUAL_TOPIC" --cta "$MANUAL_CTA"
 
       - name: Persist run log
         if: always()
