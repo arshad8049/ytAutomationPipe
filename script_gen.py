@@ -43,6 +43,8 @@ _TOOL_SCHEMA = {
             "tags": {
                 "type": "array",
                 "items": {"type": "string"},
+                "minItems": 5,
+                "maxItems": 15,
                 "description": "5-15 relevant YouTube tags, no leading # or spaces.",
             },
         },
@@ -52,33 +54,59 @@ _TOOL_SCHEMA = {
 
 
 def generate_script(topic: str | None = None) -> dict:
-    """Calls Claude and returns {"script", "title", "description", "tags"}."""
+    """Calls Claude and returns {"script", "title", "description", "tags"}.
+
+    Retries once on a schema-valid-but-content-invalid response (e.g. Claude
+    returning an empty tags array) since tool_choice guarantees the shape of
+    the call but not that fields like minItems get honored.
+    """
     client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
 
     chosen_topic = topic or config.TOPIC_SEED or random.choice(_TOPIC_ROTATION)
     min_s, max_s = config.TARGET_DURATION_SECONDS
 
-    message = client.messages.create(
-        model=config.CLAUDE_MODEL,
-        max_tokens=1024,
-        system=_SYSTEM_PROMPT.format(min_s=min_s, max_s=max_s),
-        tools=[_TOOL_SCHEMA],
-        tool_choice={"type": "tool", "name": "emit_short"},
-        messages=[
-            {
-                "role": "user",
-                "content": f"Today's Short topic: {chosen_topic}",
-            }
-        ],
-    )
+    last_error: Exception | None = None
+    for _attempt in range(2):
+        message = client.messages.create(
+            model=config.CLAUDE_MODEL,
+            max_tokens=1024,
+            system=_SYSTEM_PROMPT.format(min_s=min_s, max_s=max_s),
+            tools=[_TOOL_SCHEMA],
+            tool_choice={"type": "tool", "name": "emit_short"},
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Today's Short topic: {chosen_topic}",
+                }
+            ],
+        )
 
-    for block in message.content:
-        if block.type == "tool_use" and block.name == "emit_short":
-            result = dict(block.input)
+        result = None
+        for block in message.content:
+            if block.type == "tool_use" and block.name == "emit_short":
+                result = dict(block.input)
+                break
+
+        if result is None:
+            last_error = RuntimeError("Claude did not return an emit_short tool call")
+            continue
+
+        try:
+            _normalize_tags(result)
             _validate(result)
             return result
+        except ValueError as exc:
+            last_error = exc
 
-    raise RuntimeError("Claude did not return an emit_short tool call")
+    raise last_error
+
+
+def _normalize_tags(result: dict) -> None:
+    """Claude's tool-use schema isn't strictly type-enforced; it sometimes returns
+    tags as a single comma-separated string instead of a JSON array. Coerce it."""
+    tags = result.get("tags")
+    if isinstance(tags, str):
+        result["tags"] = [t.strip().lstrip("#") for t in tags.split(",") if t.strip()]
 
 
 def _validate(result: dict) -> None:
