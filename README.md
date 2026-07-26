@@ -16,10 +16,13 @@ Once a day, a scheduled job:
    Claude's tool-use feature rather than hoping the model formats things correctly.
 2. **Generates the video** — submits the script to HeyGen's avatar video API, polls the
    job until it's done, and downloads the finished MP4.
-3. **Publishes it** — uploads to YouTube via the Data API v3 using OAuth2 refresh-token
+3. **Captions it** — transcribes the rendered video's own audio for word-level timing,
+   then burns in rolling captions with the currently-spoken word highlighted in color
+   (karaoke style), fully locally.
+4. **Publishes it** — uploads to YouTube via the Data API v3 using OAuth2 refresh-token
    auth (no interactive login after the initial one-time setup), with metadata and
    compliance flags (like "Made for Kids") set explicitly rather than left to defaults.
-4. **Logs and reports** — appends the result to a run log and emails me the outcome,
+5. **Logs and reports** — appends the result to a run log and emails me the outcome,
    so failures are visible without checking in.
 
 ```
@@ -32,10 +35,13 @@ Scheduled trigger (GitHub Actions, daily)
 2. Video generation     ──  HeyGen API  ──▶  submit job → poll → download .mp4
         │
         ▼
-3. Upload                ──  YouTube Data API v3  ──▶  publish as a Short
+3. Captioning            ──  faster-whisper + ffmpeg  ──▶  karaoke-highlight captions burned in
         │
         ▼
-4. Logging & alerting     ──  CSV log + email notification
+4. Upload                ──  YouTube Data API v3  ──▶  publish as a Short
+        │
+        ▼
+5. Logging & alerting     ──  CSV log + email notification
 ```
 
 Everything after the trigger fires runs unattended; I only step in if a step fails.
@@ -45,6 +51,7 @@ Everything after the trigger fires runs unattended; I only step in if a step fai
 - **Python** — orchestration and all API integrations
 - **Anthropic API** — script + metadata generation, structured output via tool-use
 - **HeyGen API** — AI avatar video rendering
+- **faster-whisper + ffmpeg** — local word-level caption timing and burn-in
 - **YouTube Data API v3** — OAuth2 (refresh-token flow), video upload
 - **GitHub Actions** — cron-based scheduling, no server to maintain
 - **CSV logging + SMTP email** — lightweight observability without a database
@@ -55,6 +62,7 @@ Everything after the trigger fires runs unattended; I only step in if a step fai
 config.py                    channel constants, avatar ID, upload defaults
 script_gen.py                 Claude → {script, title, description, tags}, SEO-tuned, strict JSON
 video_gen.py                  HeyGen v3 submit → poll → download, cost-safe retry
+captions.py                   word-level transcription + karaoke-highlight caption burn-in
 youtube_upload.py             OAuth refresh-token auth → videos.insert
 auth/get_refresh_token.py     one-time local consent flow to mint the refresh token
 notify.py                     SMTP email run notifications
@@ -77,6 +85,12 @@ state/log.csv                 history of every run (date, title, video id, statu
 - **No server required** — the whole thing runs on GitHub Actions' free scheduled
   workflows, which keeps the project self-contained and easy for anyone to fork and run
   with their own keys.
+- **Captions burned in locally, not via HeyGen** — HeyGen's docs don't clearly document
+  whether karaoke-highlight caption styling is controllable through their API versus only
+  their web editor, and confirming by trial would mean spending a billed render to find
+  out. Transcribing the rendered video's own audio with `faster-whisper` and burning
+  captions in with `ffmpeg` costs nothing extra, runs in ~15s for a 30s clip, and gives
+  exact control over the highlight color.
 
 ## Running it yourself
 
@@ -86,6 +100,9 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # fill in your own API keys — see below
 ```
+
+You'll also need **`ffmpeg`** installed and on your `PATH` (`brew install ffmpeg` on macOS)
+for the captioning step. GitHub Actions installs it automatically in CI.
 
 You'll need your own keys for:
 - **Anthropic** (console.anthropic.com)
@@ -155,6 +172,13 @@ longer video you want this Short acting as a teaser for. Either flag works alone
 two inputs are exposed on the GitHub Actions side (see above) so this doesn't require a
 local machine either. Runs using either flag are tagged `manual injection` in `state/log.csv`.
 
+### Caption styling
+
+Highlight color, words per line, font, and size are all tunable via `.env` (see
+`.env.example`) without touching code — e.g. `CAPTION_HIGHLIGHT_COLOR=#39FF14` for neon
+green instead of the default yellow. `captions.py` uses `faster-whisper`'s `base.en` model
+by default (`CAPTION_WHISPER_MODEL`); `tiny.en` is faster but less accurate on word timing.
+
 ## Cost and Shorts-algorithm notes
 
 Two real constraints shaped `script_gen.py` and `video_gen.py`:
@@ -197,3 +221,9 @@ Sources: [HeyGen API pricing breakdown](https://www.g2.com/articles/heygen-api-p
 - Haven't yet tested `HEYGEN_ENGINE=avatar_iii` against the current avatar for a cheaper
   render — the account's Free-plan credits are limited, so this is worth trying carefully
   rather than by trial and error.
+- Caption text comes from Whisper's own transcription of the rendered audio, not the
+  original script text — usually identical, but Whisper can occasionally mis-hear a word,
+  which would show up as a wrong (though still correctly timed and colored) word on screen.
+- `CAPTION_FONT` defaults to "DejaVu Sans", chosen because it's reliably available via
+  fontconfig on the Ubuntu GitHub Actions runner; verify captions render as expected if you
+  change it, since font substitution behavior differs across OSes.

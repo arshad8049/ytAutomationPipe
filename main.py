@@ -4,6 +4,7 @@ import csv
 import datetime as dt
 import sys
 
+import captions
 import config
 import notify
 import script_gen
@@ -35,18 +36,26 @@ def run(topic: str | None = None, cta: str | None = None) -> int:
         return 1
 
     title = metadata["title"]
-    video_path = config.OUTPUTS_DIR / f"{today}.mp4"
+    raw_video_path = config.OUTPUTS_DIR / f"{today}_raw.mp4"
+    captioned_video_path = config.OUTPUTS_DIR / f"{today}.mp4"
 
     try:
-        video_gen.generate_video(metadata["script"], video_path)
+        video_gen.generate_video(metadata["script"], raw_video_path)
     except Exception as exc:
         _append_log({"date": today, "title": title, "video_id": "", "url": "", "status": "failed", "detail": f"video_gen: {exc}"})
         notify.notify(f"Zeno Shorts FAILED — video_gen ({today})", f"'{title}': {exc}")
         return 1
 
     try:
+        captions.add_karaoke_captions(raw_video_path, captioned_video_path)
+    except Exception as exc:
+        _append_log({"date": today, "title": title, "video_id": "", "url": "", "status": "failed", "detail": f"captions: {exc}"})
+        notify.notify(f"Zeno Shorts FAILED — captions ({today})", f"'{title}': {exc}")
+        return 1
+
+    try:
         result = youtube_upload.upload_short(
-            video_path, title, metadata["description"], metadata["tags"]
+            captioned_video_path, title, metadata["description"], metadata["tags"]
         )
     except Exception as exc:
         _append_log({"date": today, "title": title, "video_id": "", "url": "", "status": "failed", "detail": f"youtube_upload: {exc}"})

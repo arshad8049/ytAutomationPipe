@@ -52,6 +52,17 @@ PRIVACY_STATUS = "public"
 TARGET_DURATION_SECONDS = (20, 32)
 TOPIC_SEED = os.environ.get("TOPIC_SEED", "")
 
+# --- Captions (rolling, per-word-highlighted karaoke style) ---
+CAPTION_WHISPER_MODEL = os.environ.get("CAPTION_WHISPER_MODEL", "base.en")
+CAPTION_HIGHLIGHT_COLOR = os.environ.get("CAPTION_HIGHLIGHT_COLOR", "#FFE600")  # bright yellow
+CAPTION_WORDS_PER_LINE = int(os.environ.get("CAPTION_WORDS_PER_LINE", "5"))
+CAPTION_FONT = os.environ.get("CAPTION_FONT", "DejaVu Sans")
+CAPTION_FONT_SIZE = int(os.environ.get("CAPTION_FONT_SIZE", "64"))
+CAPTION_OUTLINE_WIDTH = int(os.environ.get("CAPTION_OUTLINE_WIDTH", "3"))
+CAPTION_MARGIN_V = int(os.environ.get("CAPTION_MARGIN_V", "220"))
+CAPTION_VIDEO_WIDTH = 720
+CAPTION_VIDEO_HEIGHT = 1280
+
 # --- Notifications (email via SMTP) ---
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
