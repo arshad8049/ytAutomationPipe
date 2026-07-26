@@ -1,0 +1,49 @@
+name: Daily Zeno Short
+
+on:
+  schedule:
+    - cron: "0 14 * * *" # 14:00 UTC daily
+  workflow_dispatch: {} # allows manual "Run workflow" for testing
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: short_automation
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_MODEL: ${{ secrets.CLAUDE_MODEL }}
+          HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
+          HEYGEN_AVATAR_ID: ${{ secrets.HEYGEN_AVATAR_ID }}
+          HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_FORMAT: ${{ secrets.WEBHOOK_FORMAT }}
+          TOPIC_SEED: ${{ secrets.TOPIC_SEED }}
+        run: python main.py
+
+      - name: Persist run log
+        if: always()
+        run: |
+          git config user.name "zeno-shorts-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add state/log.csv
+          git diff --cached --quiet || git commit -m "Log run for $(date -u +%F)"
+          git push

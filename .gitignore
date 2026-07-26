@@ -1,0 +1,8 @@
+.env
+state/tokens.json
+outputs/*
+!outputs/.gitkeep
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
