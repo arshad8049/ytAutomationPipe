@@ -7,8 +7,10 @@ import sys
 import captions
 import config
 import notify
+import personas
 import script_gen
 import video_gen
+import video_gen_did
 import youtube_upload
 
 _LOG_FIELDS = ["date", "title", "video_id", "url", "status", "detail"]
@@ -36,11 +38,21 @@ def run(topic: str | None = None, cta: str | None = None) -> int:
         return 1
 
     title = metadata["title"]
+    persona = metadata.get("persona", "")
     raw_video_path = config.OUTPUTS_DIR / f"{today}_raw.mp4"
     captioned_video_path = config.OUTPUTS_DIR / f"{today}.mp4"
 
     try:
-        video_gen.generate_video(metadata["script"], raw_video_path)
+        if config.DID_API_KEY:
+            image_url = personas.get_headshot_url(persona) or config.DID_FALLBACK_IMAGE_URL
+            if not image_url:
+                raise RuntimeError(
+                    f"D-ID is active but no image found for persona '{persona}' "
+                    "and DID_FALLBACK_IMAGE_URL is not set"
+                )
+            video_gen_did.generate_video(metadata["script"], image_url, raw_video_path)
+        else:
+            video_gen.generate_video(metadata["script"], raw_video_path)
     except Exception as exc:
         _append_log({"date": today, "title": title, "video_id": "", "url": "", "status": "failed", "detail": f"video_gen: {exc}"})
         notify.notify(f"Zeno Shorts FAILED — video_gen ({today})", f"'{title}': {exc}")

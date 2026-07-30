@@ -19,9 +19,15 @@ _TOPIC_ROTATION = [
     "a fun history fact retold with a twist",
 ]
 
-_SYSTEM_PROMPT = """You write scripts for "Zeno Knows", a fast, punchy YouTube Shorts channel \
-hosted by an energetic AI avatar character named Zeno. No profanity, no adult themes, no \
-medical/legal/financial advice.
+_SYSTEM_PROMPT = """You write scripts for a fast, punchy YouTube Shorts channel. Each Short is \
+narrated in first person by a specific real historical or public figure relevant to the topic — \
+NOT a fictional avatar. No profanity, no adult themes, no medical/legal/financial advice.
+
+SPEAKER SELECTION — pick the single most relevant, recognizable person whose direct experience \
+or expertise makes the content feel authoritative and surprising. The speaker narrates in their \
+own voice ("I", "my", "we") as if speaking directly to the viewer. Choose someone whose face is \
+widely recognized and exists in the public domain (historical figures, scientists, inventors, \
+explorers, rulers). Avoid living public figures unless they are clearly public domain equivalent.
 
 SCRIPT — must be genuinely worth watching to the end, not just short:
 - Open with a pattern interrupt or curiosity gap in the FIRST sentence — a claim, question, or \
@@ -33,7 +39,7 @@ SCRIPT — must be genuinely worth watching to the end, not just short:
 - Close with either a tight payoff/twist that rewards a rewatch, or a natural line that sets up \
   tomorrow's topic — never a flat summary restating what was just said.
 - Must read aloud in {min_s}-{max_s} seconds (roughly {min_w}-{max_w} spoken words). This is a \
-  hard budget, not a suggestion — going over both costs more to render and hurts watch-through \
+  hard budget, not a suggestion — going over costs more to render and hurts watch-through \
   rate, which is what YouTube's algorithm uses to decide whether to push a Short further.
 
 METADATA — optimized for how Shorts discovery actually ranks, not just keyword-stuffed:
@@ -54,9 +60,18 @@ _TOOL_SCHEMA = {
     "input_schema": {
         "type": "object",
         "properties": {
+            "persona": {
+                "type": "string",
+                "description": (
+                    "Full name of the real historical or public figure narrating this Short "
+                    "(e.g. 'Napoleon Bonaparte', 'Marie Curie', 'Nikola Tesla'). Must be a "
+                    "widely recognized figure whose image exists in the public domain. "
+                    "This drives which face appears in the video."
+                ),
+            },
             "script": {
                 "type": "string",
-                "description": "The full spoken script, ready to hand to a text-to-speech avatar.",
+                "description": "The full spoken script, written in first person as the chosen persona, ready to hand to a text-to-speech avatar.",
             },
             "title": {
                 "type": "string",
@@ -77,7 +92,7 @@ _TOOL_SCHEMA = {
                 "description": "8-12 focused, relevant YouTube tags, no leading # or spaces.",
             },
         },
-        "required": ["script", "title", "description", "tags"],
+        "required": ["persona", "script", "title", "description", "tags"],
     },
 }
 
@@ -151,12 +166,14 @@ def _normalize_tags(result: dict) -> None:
 
 
 def _validate(result: dict) -> None:
-    required = ("script", "title", "description", "tags")
+    required = ("persona", "script", "title", "description", "tags")
     missing = [key for key in required if key not in result]
     if missing:
         raise ValueError(f"script_gen result missing keys: {missing}")
     if not isinstance(result["tags"], list) or not result["tags"]:
         raise ValueError("script_gen result 'tags' must be a non-empty list")
+    if not result["persona"].strip():
+        raise ValueError("script_gen result 'persona' must not be empty")
 
     word_count = len(result["script"].split())
     if word_count > _MAX_SCRIPT_WORDS:

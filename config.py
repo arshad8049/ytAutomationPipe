@@ -18,20 +18,29 @@ CHANNEL_URL = "https://www.youtube.com/@zenoknows100much/shorts"
 
 # --- Anthropic ---
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
 
-# --- HeyGen ---
+# --- HeyGen (legacy — used if DID_API_KEY is not set) ---
 HEYGEN_API_KEY = os.environ.get("HEYGEN_API_KEY", "")
 HEYGEN_AVATAR_ID = os.environ.get("HEYGEN_AVATAR_ID", "")
 HEYGEN_VOICE_ID = os.environ.get("HEYGEN_VOICE_ID", "")
 # avatar_iv | avatar_v | avatar_iii — must match what your avatar/plan supports.
-# Cost varies a lot by engine (roughly Avatar III << Avatar IV < Avatar V per HeyGen's
-# published per-second API rates) — avatar_iii is worth testing for a cheaper render
-# IF your specific avatar was built to support it; confirm in the HeyGen dashboard
-# before switching, since a wrong engine for a given avatar fails the request outright.
 HEYGEN_ENGINE = os.environ.get("HEYGEN_ENGINE", "avatar_iv")
 HEYGEN_POLL_INTERVAL_SECONDS = 20
 HEYGEN_POLL_TIMEOUT_SECONDS = 20 * 60
+
+# --- D-ID (preferred video backend — set DID_API_KEY to activate) ---
+# Cheaper than HeyGen (~$0.25/Short on Lite plan) and accepts any face image,
+# enabling a different real historical figure per video rather than a fixed avatar.
+# Auth: D-ID uses Basic auth with your API key — get it from studio.d-id.com/settings.
+# Verify voice IDs at https://docs.d-id.com/reference/get_tts-voices
+DID_API_KEY = os.environ.get("DID_API_KEY", "")
+DID_TTS_PROVIDER = os.environ.get("DID_TTS_PROVIDER", "microsoft")
+DID_TTS_VOICE_ID = os.environ.get("DID_TTS_VOICE_ID", "en-US-GuyNeural")
+DID_POLL_INTERVAL_SECONDS = 5
+DID_POLL_TIMEOUT_SECONDS = 10 * 60
+# Fallback image URL used when Wikipedia cannot find a headshot for the persona.
+DID_FALLBACK_IMAGE_URL = os.environ.get("DID_FALLBACK_IMAGE_URL", "")
 
 # --- YouTube ---
 YOUTUBE_CLIENT_ID = os.environ.get("YOUTUBE_CLIENT_ID", "")
@@ -40,26 +49,23 @@ YOUTUBE_REFRESH_TOKEN_ENV = os.environ.get("YOUTUBE_REFRESH_TOKEN", "")
 YOUTUBE_CATEGORY_ID = "22"  # People & Blogs
 
 # Decided once, hardcoded: this channel's content is not child-directed.
-# Changing this per-video is exactly what YouTube's policy warns against guessing on.
 MADE_FOR_KIDS = False
 
 # Videos publish public immediately (no private/unlisted holding period).
 PRIVACY_STATUS = "public"
 
 # --- Script constraints ---
-# Shorter scripts cost less to render (HeyGen bills per second) and score better on
-# watch-through rate, which is what YouTube's Shorts algorithm actually optimizes for.
 TARGET_DURATION_SECONDS = (20, 32)
 TOPIC_SEED = os.environ.get("TOPIC_SEED", "")
 
 # --- Captions (rolling, per-word-highlighted karaoke style) ---
 CAPTION_WHISPER_MODEL = os.environ.get("CAPTION_WHISPER_MODEL", "base.en")
 CAPTION_HIGHLIGHT_COLOR = os.environ.get("CAPTION_HIGHLIGHT_COLOR", "#FFE600")  # bright yellow
-CAPTION_WORDS_PER_LINE = int(os.environ.get("CAPTION_WORDS_PER_LINE", "5"))
-CAPTION_FONT = os.environ.get("CAPTION_FONT", "DejaVu Sans")
-CAPTION_FONT_SIZE = int(os.environ.get("CAPTION_FONT_SIZE", "64"))
-CAPTION_OUTLINE_WIDTH = int(os.environ.get("CAPTION_OUTLINE_WIDTH", "3"))
-CAPTION_MARGIN_V = int(os.environ.get("CAPTION_MARGIN_V", "220"))
+CAPTION_WORDS_PER_LINE = int(os.environ.get("CAPTION_WORDS_PER_LINE", "3"))
+CAPTION_FONT = os.environ.get("CAPTION_FONT", "Impact")
+CAPTION_FONT_SIZE = int(os.environ.get("CAPTION_FONT_SIZE", "80"))
+CAPTION_OUTLINE_WIDTH = int(os.environ.get("CAPTION_OUTLINE_WIDTH", "5"))
+CAPTION_MARGIN_V = int(os.environ.get("CAPTION_MARGIN_V", "160"))
 CAPTION_VIDEO_WIDTH = 720
 CAPTION_VIDEO_HEIGHT = 1280
 

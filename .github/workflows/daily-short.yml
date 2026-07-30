@@ -20,9 +20,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: short_automation
     steps:
       - uses: actions/checkout@v4
 
@@ -50,6 +47,9 @@ jobs:
           HEYGEN_AVATAR_ID: ${{ secrets.HEYGEN_AVATAR_ID }}
           HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
           HEYGEN_ENGINE: ${{ secrets.HEYGEN_ENGINE }}
+          DID_API_KEY: ${{ secrets.DID_API_KEY }}
+          DID_TTS_VOICE_ID: ${{ secrets.DID_TTS_VOICE_ID }}
+          DID_FALLBACK_IMAGE_URL: ${{ secrets.DID_FALLBACK_IMAGE_URL }}
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
