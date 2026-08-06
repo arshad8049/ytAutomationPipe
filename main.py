@@ -16,6 +16,22 @@ import youtube_upload
 _LOG_FIELDS = ["date", "title", "video_id", "url", "status", "detail"]
 
 
+def _missing_secrets() -> list[str]:
+    missing = []
+    if not config.ANTHROPIC_API_KEY:
+        missing.append("ANTHROPIC_API_KEY")
+    if not config.DID_API_KEY and not (
+        config.HEYGEN_API_KEY and config.HEYGEN_AVATAR_ID and config.HEYGEN_VOICE_ID
+    ):
+        missing.append("DID_API_KEY (or HEYGEN_API_KEY + HEYGEN_AVATAR_ID + HEYGEN_VOICE_ID)")
+    for name in ("YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET"):
+        if not getattr(config, name):
+            missing.append(name)
+    if not config.YOUTUBE_REFRESH_TOKEN_ENV and not config.TOKENS_PATH.exists():
+        missing.append("YOUTUBE_REFRESH_TOKEN")
+    return missing
+
+
 def _append_log(row: dict) -> None:
     config.STATE_DIR.mkdir(parents=True, exist_ok=True)
     is_new = not config.LOG_CSV_PATH.exists()
@@ -29,6 +45,14 @@ def _append_log(row: dict) -> None:
 def run(topic: str | None = None, cta: str | None = None) -> int:
     today = dt.date.today().isoformat()
     mode_note = "manual injection" if (topic or cta) else ""
+
+    missing = _missing_secrets()
+    if missing:
+        detail = f"missing required secrets/env vars: {', '.join(missing)}"
+        print(f"ERROR: {detail}", file=sys.stderr)
+        _append_log({"date": today, "title": "", "video_id": "", "url": "", "status": "failed", "detail": detail})
+        notify.notify(f"Zeno Shorts FAILED — config ({today})", detail)
+        return 1
 
     try:
         metadata = script_gen.generate_script(topic=topic, cta=cta)
